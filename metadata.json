@@ -1,0 +1,8 @@
+{
+  "name": "IGCSE Maths: Quadratic Curves & Parabolas (Fix)",
+  "description": "Cambridge IGCSE Mathematics 0580 interactive digital lesson on quadratic functions, parabolas, roots, turning points, and graphical equation solving with step-by-step visualizations and PDF export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
