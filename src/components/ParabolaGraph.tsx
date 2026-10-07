@@ -37,6 +37,9 @@ export interface ParabolaGraphProps {
   showSymmetry?: boolean;
   additionalLines?: LineSpec[];
   intersectPoints?: Point[];
+  showCurve?: boolean;
+  showIntersections?: boolean;
+  lineProgress?: number;
   curveColor?: string;
   activeFeature?: 'roots' | 'vertex' | 'yIntercept' | 'symmetry' | null;
   speedMultiplier?: number;
@@ -55,6 +58,9 @@ export const ParabolaGraph: React.FC<ParabolaGraphProps> = ({
   points = [],
   animateCurve = false,
   curveProgress = 1,
+  showCurve = true,
+  showIntersections = true,
+  lineProgress = 1,
   showRoots = false,
   showVertex = false,
   showYIntercept = false,
@@ -174,6 +180,12 @@ export const ParabolaGraph: React.FC<ParabolaGraphProps> = ({
           {/* Arrow markers */}
           <marker id="arrow-axis" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#94a3b8" />
+          </marker>
+          <marker id="arrow-linear-pg-start" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#f43f5e" />
+          </marker>
+          <marker id="arrow-linear-pg-end" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#f43f5e" />
           </marker>
           {/* Glow filter */}
           <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
@@ -312,44 +324,62 @@ export const ParabolaGraph: React.FC<ParabolaGraphProps> = ({
           0
         </text>
 
-        {/* Additional lines (e.g. y = k or y = mx + c) */}
+        {/* Additional lines (e.g. y = k or y = mx + c) - Clear Crisp Lines */}
         {additionalLines.map((line, idx) => {
+          const clampedProgress = Math.min(Math.max(lineProgress, 0), 1);
           if (line.type === 'horizontal' && line.value !== undefined) {
             const ly = toSvgY(line.value);
+            const lineEndX = padding.left + plotW * clampedProgress;
             return (
               <g key={`add-line-${idx}`}>
+                {/* Crisp dark underlay border for separation from grid */}
                 <line
                   x1={padding.left}
                   y1={ly}
-                  x2={padding.left + plotW}
+                  x2={lineEndX}
                   y2={ly}
-                  stroke={line.color || '#ec4899'}
-                  strokeWidth="2.5"
-                  strokeDasharray={line.dashed ? '6,4' : undefined}
+                  stroke="#020617"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  shapeRendering="geometricPrecision"
                 />
-                {line.label && (
-                  <rect
-                    x={padding.left + 8}
-                    y={ly - 22}
-                    width={line.label.length * 8 + 16}
-                    height="18"
-                    rx="4"
-                    fill="#1e1b4b"
-                    stroke={line.color || '#ec4899'}
-                    strokeWidth="1"
-                  />
-                )}
-                {line.label && (
-                  <text
-                    x={padding.left + 16}
-                    y={ly - 9}
-                    fill={line.color || '#f472b6'}
-                    fontSize="11"
-                    fontWeight="600"
-                    fontFamily="JetBrains Mono, monospace"
-                  >
-                    {line.label}
-                  </text>
+                {/* Crisp, clear solid foreground line */}
+                <line
+                  x1={padding.left}
+                  y1={ly}
+                  x2={lineEndX}
+                  y2={ly}
+                  stroke={line.color || '#f43f5e'}
+                  strokeWidth="3.6"
+                  strokeLinecap="round"
+                  strokeDasharray={line.dashed ? '6,4' : undefined}
+                  shapeRendering="geometricPrecision"
+                  markerStart={clampedProgress >= 0.95 ? "url(#arrow-linear-pg-start)" : undefined}
+                  markerEnd={clampedProgress >= 0.95 ? "url(#arrow-linear-pg-end)" : undefined}
+                />
+                {line.label && clampedProgress > 0.3 && (
+                  <g>
+                    <rect
+                      x={padding.left + 8}
+                      y={ly - 24}
+                      width={line.label.length * 7.5 + 18}
+                      height="22"
+                      rx="6"
+                      fill="#0f172a"
+                      stroke={line.color || '#f43f5e'}
+                      strokeWidth="1.5"
+                    />
+                    <text
+                      x={padding.left + 17}
+                      y={ly - 9}
+                      fill="#fecdd3"
+                      fontSize="11"
+                      fontWeight="bold"
+                      fontFamily="JetBrains Mono, monospace"
+                    >
+                      {line.label}
+                    </text>
+                  </g>
                 )}
               </g>
             );
@@ -358,28 +388,58 @@ export const ParabolaGraph: React.FC<ParabolaGraphProps> = ({
             const x1 = xMin;
             const y1 = line.m * x1 + line.c;
             const x2 = xMax;
-            const y2 = line.m * x2 + line.c;
+            const curX2 = x1 + (x2 - x1) * clampedProgress;
+            const curY2 = line.m * curX2 + line.c;
             return (
               <g key={`add-linear-${idx}`}>
+                {/* Crisp dark underlay border for separation from grid */}
                 <line
                   x1={toSvgX(x1)}
                   y1={toSvgY(y1)}
-                  x2={toSvgX(x2)}
-                  y2={toSvgY(y2)}
-                  stroke={line.color || '#ec4899'}
-                  strokeWidth="2.5"
-                  strokeDasharray={line.dashed ? '6,4' : undefined}
+                  x2={toSvgX(curX2)}
+                  y2={toSvgY(curY2)}
+                  stroke="#020617"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  shapeRendering="geometricPrecision"
                 />
-                {line.label && (
-                  <text
-                    x={toSvgX(2)}
-                    y={toSvgY(line.m * 2 + line.c) - 10}
-                    fill={line.color || '#f472b6'}
-                    fontSize="12"
-                    fontWeight="bold"
-                  >
-                    {line.label}
-                  </text>
+                {/* Crisp, clear solid foreground line */}
+                <line
+                  x1={toSvgX(x1)}
+                  y1={toSvgY(y1)}
+                  x2={toSvgX(curX2)}
+                  y2={toSvgY(curY2)}
+                  stroke={line.color || '#f43f5e'}
+                  strokeWidth="3.6"
+                  strokeLinecap="round"
+                  strokeDasharray={line.dashed ? '6,4' : undefined}
+                  shapeRendering="geometricPrecision"
+                  markerStart={clampedProgress >= 0.95 ? "url(#arrow-linear-pg-start)" : undefined}
+                  markerEnd={clampedProgress >= 0.95 ? "url(#arrow-linear-pg-end)" : undefined}
+                />
+                {line.label && clampedProgress > 0.4 && (
+                  <g>
+                    <rect
+                      x={toSvgX(1.8)}
+                      y={toSvgY(line.m * 1.8 + line.c) - 26}
+                      width={line.label.length * 7.5 + 18}
+                      height="22"
+                      rx="6"
+                      fill="#0f172a"
+                      stroke={line.color || '#f43f5e'}
+                      strokeWidth="1.5"
+                    />
+                    <text
+                      x={toSvgX(1.8) + 9}
+                      y={toSvgY(line.m * 1.8 + line.c) - 11}
+                      fill="#fecdd3"
+                      fontSize="11"
+                      fontWeight="bold"
+                      fontFamily="JetBrains Mono, monospace"
+                    >
+                      {line.label}
+                    </text>
+                  </g>
                 )}
               </g>
             );
@@ -424,17 +484,19 @@ export const ParabolaGraph: React.FC<ParabolaGraphProps> = ({
         )}
 
         {/* The Parabola Curve */}
-        <g clipPath="url(#curve-clip)">
-          <path
-            d={pathData}
-            fill="none"
-            stroke={curveColor}
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            filter="url(#glow-cyan)"
-          />
-        </g>
+        {showCurve && (
+          <g clipPath="url(#curve-clip)">
+            <path
+              d={pathData}
+              fill="none"
+              stroke={curveColor}
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              filter="url(#glow-cyan)"
+            />
+          </g>
+        )}
 
         {/* Turning Point (Vertex) - Gold / Yellow */}
         {(showVertex || activeFeature === 'vertex') && (
@@ -568,57 +630,66 @@ export const ParabolaGraph: React.FC<ParabolaGraphProps> = ({
         )}
 
         {/* Intersection Points (e.g. for solving equations) */}
-        {intersectPoints.map((pt, idx) => (
-          <g key={`intersect-${idx}`}>
-            {/* Dotted drop line to x-axis */}
-            <line
-              x1={toSvgX(pt.x)}
-              y1={toSvgY(pt.y)}
-              x2={toSvgX(pt.x)}
-              y2={originY}
-              stroke="#ec4899"
-              strokeWidth="1.5"
-              strokeDasharray="4,3"
-            />
-            {/* Dot at intersection */}
-            <circle
-              cx={toSvgX(pt.x)}
-              cy={toSvgY(pt.y)}
-              r="6.5"
-              fill="#ec4899"
-              stroke="#ffffff"
-              strokeWidth="2"
-            />
-            {/* Dot on x-axis */}
-            <circle
-              cx={toSvgX(pt.x)}
-              cy={originY}
-              r="5"
-              fill="#ec4899"
-            />
-            <rect
-              x={toSvgX(pt.x) - 24}
-              y={originY + 20}
-              width="48"
-              height="20"
-              rx="4"
-              fill="#831843"
-              stroke="#f472b6"
-              strokeWidth="1"
-            />
-            <text
-              x={toSvgX(pt.x)}
-              y={originY + 34}
-              textAnchor="middle"
-              fill="#fdf2f8"
-              fontSize="11"
-              fontWeight="bold"
-              fontFamily="JetBrains Mono, monospace"
-            >
-              x = {pt.x % 1 === 0 ? pt.x : pt.x.toFixed(1)}
-            </text>
-          </g>
-        ))}
+        {showIntersections &&
+          intersectPoints.map((pt, idx) => (
+            <g key={`intersect-${idx}`}>
+              {/* Pulsing ring at intersection */}
+              <circle
+                cx={toSvgX(pt.x)}
+                cy={toSvgY(pt.y)}
+                r="14"
+                fill="rgba(236, 72, 153, 0.35)"
+                className="animate-ping"
+              />
+              {/* Dotted drop line to x-axis */}
+              <line
+                x1={toSvgX(pt.x)}
+                y1={toSvgY(pt.y)}
+                x2={toSvgX(pt.x)}
+                y2={originY}
+                stroke="#ec4899"
+                strokeWidth="1.5"
+                strokeDasharray="4,3"
+              />
+              {/* Dot at intersection */}
+              <circle
+                cx={toSvgX(pt.x)}
+                cy={toSvgY(pt.y)}
+                r="6.5"
+                fill="#ec4899"
+                stroke="#ffffff"
+                strokeWidth="2"
+              />
+              {/* Dot on x-axis */}
+              <circle
+                cx={toSvgX(pt.x)}
+                cy={originY}
+                r="5"
+                fill="#ec4899"
+              />
+              <rect
+                x={toSvgX(pt.x) - 24}
+                y={originY + 20}
+                width="48"
+                height="20"
+                rx="4"
+                fill="#831843"
+                stroke="#f472b6"
+                strokeWidth="1"
+              />
+              <text
+                x={toSvgX(pt.x)}
+                y={originY + 34}
+                textAnchor="middle"
+                fill="#fdf2f8"
+                fontSize="11"
+                fontWeight="bold"
+                fontFamily="JetBrains Mono, monospace"
+              >
+                x = {pt.x % 1 === 0 ? pt.x : pt.x.toFixed(1)}
+              </text>
+            </g>
+          ))}
 
         {/* User plotted points (from Table of Values) */}
         {points

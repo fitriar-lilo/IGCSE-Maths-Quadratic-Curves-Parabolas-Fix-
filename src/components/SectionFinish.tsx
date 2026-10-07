@@ -49,9 +49,9 @@ export const SectionFinish: React.FC<SectionFinishProps> = ({
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const getGradeTitle = (s: number) => {
-    if (s === 5) return 'A* (Distinction Level) — Outstanding Master';
-    if (s === 4) return 'A (Merit Level) — Strong Proficiency';
-    if (s === 3) return 'B (Good Pass) — Solid Foundation';
+    if (s >= 9) return 'A* (Distinction Level) — Outstanding Master';
+    if (s >= 7) return 'A (Merit Level) — Strong Proficiency';
+    if (s >= 5) return 'B (Good Pass) — Solid Foundation';
     return 'Core Progress — Keep Practicing';
   };
 
@@ -67,13 +67,28 @@ export const SectionFinish: React.FC<SectionFinishProps> = ({
   if (quizCorrect[3]) strengths.push('Deducing concavity and y-intercept algebraically without plotting');
   else areasToReview.push('Connecting coefficient signs (a > 0 vs a < 0) to smile/frown shapes');
 
-  if (quizCorrect[4]) strengths.push('Solving ax^2 + bx + c = 0 by reading x-intercepts');
+  if (quizCorrect[4]) strengths.push('Extracting vertex turning point and axis of symmetry from vertex form y = (x - h)² + k');
+  else areasToReview.push('Finding minimum/maximum vertex coordinates from completed square form');
+
+  if (quizCorrect[5]) strengths.push('Calculating the discriminant Δ = b² - 4ac and determining the number of roots');
+  else areasToReview.push('Applying discriminant rules (Δ > 0, Δ = 0, Δ < 0) to determine x-axis intersections');
+
+  if (quizCorrect[6]) strengths.push('Solving ax² + bx + c = 0 graphically by reading x-intercepts with line y = 0');
   else areasToReview.push('Recognizing that roots correspond to y = 0 on the x-axis');
 
-  if (quizCorrect[5]) strengths.push('Solving quadratic equations equal to a constant (ax^2 + bx + c = k) using horizontal lines');
+  if (quizCorrect[7]) strengths.push('Solving quadratic equations equal to a constant (ax² + bx + c = k) using horizontal lines');
   else areasToReview.push('Drawing horizontal lines y = k and projecting down to the x-axis');
 
-  if (strengths.length === 0) strengths.push('Completed all sections and attempted all challenging exam problems!');
+  if (quizCorrect[8]) strengths.push('Identifying tangent lines touching the vertex (one repeated solution)');
+  else areasToReview.push('Recognizing that a horizontal line touching the vertex yields exactly 1 repeated root');
+
+  if (quizCorrect[9]) strengths.push('Solving equations with slanted lines y = mx + d via graphical intersections');
+  else areasToReview.push('Decomposing equations into curve and slanted line y = mx + d to find meeting points');
+
+  if (quizCorrect[10]) strengths.push('Recognizing when equations have 0 real solutions because lines lie beyond the turning point');
+  else areasToReview.push('Explaining why no real solutions exist when lines do not intersect the parabola');
+
+  if (strengths.length === 0) strengths.push('Completed all sections and attempted all 10 challenging exam problems!');
 
   const handleDownloadPDF = async () => {
     if (!pdfRef.current) return;
@@ -160,13 +175,13 @@ export const SectionFinish: React.FC<SectionFinishProps> = ({
             {studentName || 'Dedicated Mathematician'}
           </div>
           <span className="text-xs text-slate-400 block mt-2">
-            has successfully completed all guided discovery modules, graphical solvers, and the final 5-mark examination.
+            has successfully completed all guided discovery modules, graphical solvers, and the final 10-question examination.
           </span>
         </div>
 
         {/* Score Pill & Level */}
         <div className="inline-flex flex-col items-center p-4 rounded-2xl bg-slate-950/80 border border-amber-500/30 space-y-1">
-          <div className="text-3xl font-bold font-mono text-amber-400">{score} / 5 Marks</div>
+          <div className="text-3xl font-bold font-mono text-amber-400">{score} / 10 Marks</div>
           <span className="text-xs font-semibold text-slate-300">{getGradeTitle(score)}</span>
         </div>
 
@@ -405,9 +420,10 @@ export const SectionFinish: React.FC<SectionFinishProps> = ({
         {/* Section C: Final Assessment Answers */}
         <div className="space-y-3">
           <h2 className="text-base font-bold text-slate-900 border-b border-slate-200 pb-1 font-heading">
-            3. Final Assessment Results & Worked Solutions
+            3. Final Assessment Results & Worked Solutions (10 Questions Total)
           </h2>
           <div className="space-y-2 text-xs">
+            <div className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Part 1: Discovery & Sketching</div>
             <div className="flex justify-between border-b border-slate-100 pb-1">
               <span><strong>Q1:</strong> Table & y-intercept for y = x² - 4x + 3</span>
               <span className={quizCorrect[1] ? 'text-emerald-700 font-bold' : 'text-rose-700'}>
@@ -427,15 +443,47 @@ export const SectionFinish: React.FC<SectionFinishProps> = ({
               </span>
             </div>
             <div className="flex justify-between border-b border-slate-100 pb-1">
-              <span><strong>Q4:</strong> Graphical solution of x² - 4x + 3 = 0 (x = 1, x = 3)</span>
+              <span><strong>Q4:</strong> Vertex form y = (x - 3)² - 1 (TP: (3, -1) | Sym: x = 3)</span>
               <span className={quizCorrect[4] ? 'text-emerald-700 font-bold' : 'text-rose-700'}>
                 {quizCorrect[4] ? '1/1 Mark (Correct)' : '0/1 Mark'}
               </span>
             </div>
             <div className="flex justify-between border-b border-slate-100 pb-1">
-              <span><strong>Q5:</strong> Graphical solution of x² - 4x + 3 = 3 (x = 0, x = 4)</span>
+              <span><strong>Q5:</strong> Discriminant Δ = -16 & 0 real roots for y = x² - 2x + 5</span>
               <span className={quizCorrect[5] ? 'text-emerald-700 font-bold' : 'text-rose-700'}>
                 {quizCorrect[5] ? '1/1 Mark (Correct)' : '0/1 Mark'}
+              </span>
+            </div>
+
+            <div className="font-bold text-slate-700 uppercase tracking-wider text-[10px] pt-1">Part 2: Solving Graphically</div>
+            <div className="flex justify-between border-b border-slate-100 pb-1">
+              <span><strong>Q6:</strong> Graphical solution of x² - 4x + 3 = 0 (x = 1, x = 3)</span>
+              <span className={quizCorrect[6] ? 'text-emerald-700 font-bold' : 'text-rose-700'}>
+                {quizCorrect[6] ? '1/1 Mark (Correct)' : '0/1 Mark'}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-1">
+              <span><strong>Q7:</strong> Graphical solution of x² - 4x + 3 = 3 (x = 0, x = 4)</span>
+              <span className={quizCorrect[7] ? 'text-emerald-700 font-bold' : 'text-rose-700'}>
+                {quizCorrect[7] ? '1/1 Mark (Correct)' : '0/1 Mark'}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-1">
+              <span><strong>Q8:</strong> Tangent at vertex x² - 4x + 3 = -1 (1 solution: x = 2)</span>
+              <span className={quizCorrect[8] ? 'text-emerald-700 font-bold' : 'text-rose-700'}>
+                {quizCorrect[8] ? '1/1 Mark (Correct)' : '0/1 Mark'}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-1">
+              <span><strong>Q9:</strong> Slanted line x² - 4x + 3 = -x + 3 (x = 0, x = 3)</span>
+              <span className={quizCorrect[9] ? 'text-emerald-700 font-bold' : 'text-rose-700'}>
+                {quizCorrect[9] ? '1/1 Mark (Correct)' : '0/1 Mark'}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-slate-100 pb-1">
+              <span><strong>Q10:</strong> No real solutions x² - 4x + 3 = -4 (0 meeting points)</span>
+              <span className={quizCorrect[10] ? 'text-emerald-700 font-bold' : 'text-rose-700'}>
+                {quizCorrect[10] ? '1/1 Mark (Correct)' : '0/1 Mark'}
               </span>
             </div>
           </div>
@@ -447,7 +495,7 @@ export const SectionFinish: React.FC<SectionFinishProps> = ({
             Cambridge IGCSE Mathematics 0580 Extended Standard Verification
           </div>
           <div className="border border-slate-400 p-2 rounded text-slate-700 font-mono font-semibold">
-            VERIFIED COMPLETE · GRADE: {score}/5
+            VERIFIED COMPLETE · GRADE: {score}/10
           </div>
         </div>
       </div>

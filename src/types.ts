@@ -42,6 +42,7 @@ export interface Section3State {
   activeTab: number;
   showHint: { [key: number]: boolean };
   showSolution: { [key: number]: boolean };
+  // Part 1: Discovery and Sketching (Q1 - Q5)
   q1Table: { [x: number]: string };
   q1YInt: string;
   q2Roots: string;
@@ -49,8 +50,22 @@ export interface Section3State {
   q2Sym: string;
   q3Type: 'minimum' | 'maximum' | '';
   q3YInt: string;
-  q4Ans: string;
-  q5Ans: string;
+  q4TP: string;
+  q4Sym: string;
+  q5Disc: string;
+  q5NumRoots: string;
+  // Part 2: Solving Graphically (Q6 - Q10)
+  q6Ans: string;
+  q7Ans: string;
+  q8NumSol: string;
+  q8Ans: string;
+  q9Ans: string;
+  q10NumSol: string;
+  q10Explanation: string;
+  // Legacy fields for backward compatibility
+  q4Ans?: string;
+  q5Ans?: string;
+  // General quiz answers, checked status, and scoring
   quizAnswers: { [key: number]: string };
   quizChecked: { [key: number]: boolean };
   quizCorrect: { [key: number]: boolean };
@@ -167,6 +182,17 @@ export const getDefaultSection3State = (): Section3State => ({
   q2Sym: '',
   q3Type: '',
   q3YInt: '',
+  q4TP: '',
+  q4Sym: '',
+  q5Disc: '',
+  q5NumRoots: '',
+  q6Ans: '',
+  q7Ans: '',
+  q8NumSol: '',
+  q8Ans: '',
+  q9Ans: '',
+  q10NumSol: '',
+  q10Explanation: '',
   q4Ans: '',
   q5Ans: '',
   quizAnswers: {},
