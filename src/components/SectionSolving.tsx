@@ -756,11 +756,11 @@ export const SectionSolving: React.FC<SectionSolvingProps> = ({
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-2xl bg-slate-900/80 border border-slate-800 text-xs">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-mono text-[11px]">
-                    Component 1: {current.component1}
+                  <span className="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-800 text-cyan-300 text-[11px] inline-flex items-center gap-1.5">
+                    Component 1: <MathView math={current.component1} />
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-pink-950/80 border border-pink-800 text-pink-300 font-mono text-[11px]">
-                    Component 2: {current.component2}
+                  <span className="px-2.5 py-1 rounded-lg bg-pink-950/80 border border-pink-800 text-pink-300 text-[11px] inline-flex items-center gap-1.5">
+                    Component 2: <MathView math={current.component2} />
                   </span>
                 </div>
                 <span className="text-[11px] font-mono text-pink-300 bg-pink-950/60 border border-pink-800/60 px-2 py-0.5 rounded">

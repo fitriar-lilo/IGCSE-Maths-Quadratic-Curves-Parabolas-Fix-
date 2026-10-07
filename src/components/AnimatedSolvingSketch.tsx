@@ -522,7 +522,7 @@ export const AnimatedSolvingSketch: React.FC<AnimatedSolvingSketchProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
               <div className="md:col-span-7 space-y-1.5">
                 <p className="text-slate-200 text-xs leading-relaxed">
-                  To sketch the straight line <strong className="text-pink-300 font-mono">{component2}</strong>:
+                  To sketch the straight line <strong className="text-pink-300 inline-flex items-center mx-1"><MathView math={component2} /></strong>:
                 </p>
                 <ol className="text-[11px] text-slate-300 space-y-1 list-decimal list-inside">
                   <li>
@@ -532,15 +532,16 @@ export const AnimatedSolvingSketch: React.FC<AnimatedSolvingSketchProps> = ({
                     Lay your <strong>straight ruler</strong> precisely along the plotted points.
                   </li>
                   <li>
-                    Draw the continuous straight line across the full grid and label it <strong className="font-mono text-pink-300">{component2}</strong>.
+                    Draw the continuous straight line across the full grid and label it <strong className="text-pink-300 inline-flex items-center mx-1"><MathView math={component2} /></strong>.
                   </li>
                 </ol>
               </div>
 
               {/* Guide Points Table */}
               <div className="md:col-span-5 p-2 rounded-xl bg-slate-900/90 border border-pink-900/50 text-center">
-                <span className="text-[10px] uppercase font-bold text-pink-400 block tracking-wider mb-1">
-                  Linear Guide Points ({component2})
+                <span className="text-[10px] uppercase font-bold text-pink-400 inline-flex items-center justify-center gap-1 tracking-wider mb-1">
+                  <span>Linear Guide Points</span>
+                  (<MathView math={component2} />)
                 </span>
                 <table className="w-full text-center text-[11px] border-collapse font-mono">
                   <thead>
@@ -735,14 +736,18 @@ export const AnimatedSolvingSketch: React.FC<AnimatedSolvingSketchProps> = ({
                 </g>
               )}
 
-              {/* Component 1 Badge on curve */}
+              {/* Component 1 Badge on curve with KaTeX LaTeX */}
               {(step >= 3 || (step === 2 && curveProgress >= 0.9)) && (
-                <g transform={`translate(${toSvgX(vertexX) - 50}, ${toSvgY(vertexY) + (curveA > 0 ? 28 : -32)})`}>
-                  <rect width="100" height="20" rx="5" fill="#082f49" stroke="#0ea5e9" strokeWidth="1" />
-                  <text x="50" y="14" textAnchor="middle" fill="#7dd3fc" fontSize="10" fontWeight="bold" fontFamily="JetBrains Mono, monospace">
-                    y = ax² + bx + c
-                  </text>
-                </g>
+                <foreignObject
+                  x={toSvgX(vertexX) - 65}
+                  y={toSvgY(vertexY) + (curveA > 0 ? 24 : -38)}
+                  width="130"
+                  height="32"
+                >
+                  <div className="px-2 py-0.5 rounded-lg bg-slate-950/95 border border-sky-400 text-sky-200 text-[11px] font-bold text-center shadow inline-flex items-center justify-center">
+                    <MathView math={component1} />
+                  </div>
+                </foreignObject>
               )}
             </g>
           )}
@@ -969,14 +974,19 @@ export const AnimatedSolvingSketch: React.FC<AnimatedSolvingSketchProps> = ({
                 </g>
               )}
 
-              {/* Component 2 Badge on line - Clear & Crisp */}
+              {/* Component 2 Badge on line with KaTeX LaTeX */}
               {(step === 4 || (step === 3 && lineProgress >= 0.8)) && (
-                <g transform={`translate(${toSvgX(Math.min(xMax - 2.2, 3.0))}, ${toSvgY(getLineY(Math.min(xMax - 2.2, 3.0))) - 26})`}>
-                  <rect width="130" height="22" rx="6" fill="#0f172a" stroke="#f43f5e" strokeWidth="1.5" />
-                  <text x="65" y="15" textAnchor="middle" fill="#fecdd3" fontSize="10.5" fontWeight="bold" fontFamily="JetBrains Mono, monospace">
-                    Line: {component2}
-                  </text>
-                </g>
+                <foreignObject
+                  x={toSvgX(Math.min(xMax - 2.2, 3.0)) - 10}
+                  y={toSvgY(getLineY(Math.min(xMax - 2.2, 3.0))) - 32}
+                  width="140"
+                  height="30"
+                >
+                  <div className="px-2 py-0.5 rounded-lg bg-slate-950/95 border border-rose-500 text-rose-200 text-[11px] font-bold text-center shadow inline-flex items-center justify-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-sans">Line:</span>
+                    <MathView math={component2} />
+                  </div>
+                </foreignObject>
               )}
             </g>
           )}
@@ -1042,23 +1052,30 @@ export const AnimatedSolvingSketch: React.FC<AnimatedSolvingSketchProps> = ({
                 </g>
               </g>
             ))}
-
-          {/* Step 1 Overlay Notice */}
-          {step === 1 && (
-            <g transform={`translate(${padding.left + 40}, ${padding.top + 70})`}>
-              <rect width={plotW - 80} height="90" rx="12" fill="rgba(15, 23, 42, 0.92)" stroke="#38bdf8" strokeWidth="1.5" />
-              <text x={(plotW - 80) / 2} y="30" textAnchor="middle" fill="#e0f2fe" fontSize="14" fontWeight="bold">
-                Step 1: Equation Decomposed
-              </text>
-              <text x={(plotW - 80) / 2} y="52" textAnchor="middle" fill="#7dd3fc" fontSize="12" fontFamily="JetBrains Mono, monospace">
-                {component1}   and   {component2}
-              </text>
-              <text x={(plotW - 80) / 2} y="74" textAnchor="middle" fill="#94a3b8" fontSize="11">
-                Press "Step 2" or "Play Animation" to sketch!
-              </text>
-            </g>
-          )}
         </svg>
+
+        {/* Step 1 Overlay Notice with KaTeX LaTeX Equation Rendering */}
+        {step === 1 && (
+          <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none">
+            <div className="w-full max-w-sm rounded-2xl bg-slate-950/95 border-2 border-cyan-400 p-5 shadow-2xl text-center backdrop-blur-md pointer-events-auto ring-1 ring-cyan-400/30">
+              <h5 className="text-sm md:text-base font-bold text-white mb-2 font-heading">
+                Step 1: Equation Decomposed
+              </h5>
+              <div className="flex flex-wrap items-center justify-center gap-2 text-cyan-200 text-sm font-bold my-2">
+                <span className="px-2.5 py-1 rounded-xl bg-cyan-950/80 border border-cyan-500/60 shadow-sm inline-flex items-center">
+                  <MathView math={component1} />
+                </span>
+                <span className="text-slate-400 text-xs font-semibold uppercase font-sans">and</span>
+                <span className="px-2.5 py-1 rounded-xl bg-pink-950/80 border border-pink-500/60 text-pink-200 shadow-sm inline-flex items-center">
+                  <MathView math={component2} />
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-2">
+                Press &ldquo;Step 2&rdquo; or &ldquo;Play Animation&rdquo; to sketch!
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer Navigation Buttons */}
