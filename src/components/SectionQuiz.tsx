@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { MathView } from './MathView';
 import { ParabolaGraph } from './ParabolaGraph';
 import { soundManager } from '../utils/soundEffects';
+import { exportElementToPdf } from '../utils/pdfExport';
+import { Section3State } from '../types';
 import {
   Award,
   HelpCircle,
@@ -11,54 +13,106 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  Trophy
+  Trophy,
+  Download,
+  FileCheck
 } from 'lucide-react';
 
 interface SectionQuizProps {
-  quizAnswers: { [key: number]: string };
-  quizChecked: { [key: number]: boolean };
-  quizCorrect: { [key: number]: boolean };
-  score: number;
-  onUpdateQuestion: (qId: number, answer: string, isCorrect: boolean) => void;
+  state: Section3State;
+  onChange: (updater: (prev: Section3State) => Section3State) => void;
+  studentName: string;
   onCompleteQuiz: () => void;
 }
 
 export const SectionQuiz: React.FC<SectionQuizProps> = ({
-  quizAnswers,
-  quizChecked,
-  quizCorrect,
-  score,
-  onUpdateQuestion,
+  state,
+  onChange,
+  studentName,
   onCompleteQuiz,
 }) => {
-  const [activeTab, setActiveTab] = useState(1);
-  const [showHint, setShowHint] = useState<{ [key: number]: boolean }>({});
-  const [showSolution, setShowSolution] = useState<{ [key: number]: boolean }>({});
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const pdf3Ref = useRef<HTMLDivElement>(null);
 
-  // Question 1 specific sub-inputs: table y-values for x in 0..4 and y-intercept
-  const [q1Table, setQ1Table] = useState<{ [x: number]: string }>({
-    '0': '',
-    '1': '',
-    '2': '',
-    '3': '',
-    '4': '',
-  });
-  const [q1YInt, setQ1YInt] = useState('');
+  const handleDownloadSection3PDF = async () => {
+    if (!pdf3Ref.current) return;
+    setIsExporting(true);
+    const safeName = (studentName || 'Student').replace(/[^a-zA-Z0-9]/g, '_');
+    const success = await exportElementToPdf(pdf3Ref.current, `IGCSE_Maths_0580_Section3_Assessment_${safeName}.pdf`);
+    setIsExporting(false);
+    if (success) {
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 4000);
+    }
+  };
 
-  // Question 2 sub-inputs: roots, turning point, symmetry
-  const [q2Roots, setQ2Roots] = useState('');
-  const [q2TP, setQ2TP] = useState('');
-  const [q2Sym, setQ2Sym] = useState('');
+  const {
+    activeTab,
+    showHint,
+    showSolution,
+    q1Table,
+    q1YInt,
+    q2Roots,
+    q2TP,
+    q2Sym,
+    q3Type,
+    q3YInt,
+    q4Ans,
+    q5Ans,
+    quizAnswers,
+    quizChecked,
+    quizCorrect,
+    score,
+  } = state;
 
-  // Question 3 sub-inputs: min/max, y-intercept
-  const [q3Type, setQ3Type] = useState<'minimum' | 'maximum' | ''>('');
-  const [q3YInt, setQ3YInt] = useState('');
+  type BoolKeyMap = { [key: number]: boolean };
+  type TableMap = { [x: number]: string };
 
-  // Question 4 input
-  const [q4Ans, setQ4Ans] = useState(quizAnswers[4] || '');
+  const setActiveTab = (t: number) => onChange((prev) => ({ ...prev, activeTab: t }));
+  const setShowHint = (valOrFn: BoolKeyMap | ((prev: BoolKeyMap) => BoolKeyMap)) =>
+    onChange((prev) => ({
+      ...prev,
+      showHint: typeof valOrFn === 'function' ? valOrFn(prev.showHint) : valOrFn,
+    }));
+  const setShowSolution = (valOrFn: BoolKeyMap | ((prev: BoolKeyMap) => BoolKeyMap)) =>
+    onChange((prev) => ({
+      ...prev,
+      showSolution: typeof valOrFn === 'function' ? valOrFn(prev.showSolution) : valOrFn,
+    }));
 
-  // Question 5 input
-  const [q5Ans, setQ5Ans] = useState(quizAnswers[5] || '');
+  const setQ1Table = (valOrFn: TableMap | ((prev: TableMap) => TableMap)) =>
+    onChange((prev) => ({
+      ...prev,
+      q1Table: typeof valOrFn === 'function' ? valOrFn(prev.q1Table) : valOrFn,
+    }));
+  const setQ1YInt = (val: string) => onChange((prev) => ({ ...prev, q1YInt: val }));
+
+  const setQ2Roots = (val: string) => onChange((prev) => ({ ...prev, q2Roots: val }));
+  const setQ2TP = (val: string) => onChange((prev) => ({ ...prev, q2TP: val }));
+  const setQ2Sym = (val: string) => onChange((prev) => ({ ...prev, q2Sym: val }));
+
+  const setQ3Type = (val: 'minimum' | 'maximum' | '') => onChange((prev) => ({ ...prev, q3Type: val }));
+  const setQ3YInt = (val: string) => onChange((prev) => ({ ...prev, q3YInt: val }));
+
+  const setQ4Ans = (val: string) => onChange((prev) => ({ ...prev, q4Ans: val }));
+  const setQ5Ans = (val: string) => onChange((prev) => ({ ...prev, q5Ans: val }));
+
+  const onUpdateQuestion = (qId: number, answer: string, isCorrect: boolean) => {
+    onChange((prev) => {
+      const updatedAnswers = { ...prev.quizAnswers, [qId]: answer };
+      const updatedChecked = { ...prev.quizChecked, [qId]: true };
+      const updatedCorrect = { ...prev.quizCorrect, [qId]: isCorrect };
+      const newScore = Object.values(updatedCorrect).filter(Boolean).length;
+      return {
+        ...prev,
+        quizAnswers: updatedAnswers,
+        quizChecked: updatedChecked,
+        quizCorrect: updatedCorrect,
+        score: newScore,
+      };
+    });
+  };
 
   // Verification handlers
   const handleCheckQ1 = () => {
@@ -190,17 +244,42 @@ export const SectionQuiz: React.FC<SectionQuizProps> = ({
           </p>
         </div>
 
-        {/* Live Score Counter Badge */}
-        <div className="flex items-center gap-4 bg-slate-950/80 border border-slate-700/80 rounded-2xl p-4 shrink-0 shadow-lg">
-          <Award className="w-8 h-8 text-amber-400" />
-          <div>
-            <span className="text-xs text-slate-400 block uppercase tracking-wider font-semibold">Running Score</span>
-            <div className="text-2xl font-bold text-white font-mono">
-              <span className="text-amber-400">{score}</span> / 5 Marks
+        {/* Live Score Counter Badge & Download Actions */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex items-center gap-4 bg-slate-950/80 border border-slate-700/80 rounded-2xl p-4 shrink-0 shadow-lg">
+            <Award className="w-8 h-8 text-amber-400" />
+            <div>
+              <span className="text-xs text-slate-400 block uppercase tracking-wider font-semibold">Running Score</span>
+              <div className="text-2xl font-bold text-white font-mono">
+                <span className="text-amber-400">{score}</span> / 5 Marks
+              </div>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 px-3 py-1 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Answers Saved</span>
+            </div>
+
+            <button
+              onClick={handleDownloadSection3PDF}
+              disabled={isExporting}
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-bold font-heading text-xs shadow-md shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>{isExporting ? 'Generating PDF...' : 'Download Section 3 (PDF)'}</span>
+            </button>
           </div>
         </div>
       </div>
+
+      {exportSuccess && (
+        <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs flex items-center gap-2 animate-in fade-in">
+          <FileCheck className="w-4 h-4 text-emerald-400" />
+          <span>Section 3 Examination Paper PDF downloaded successfully!</span>
+        </div>
+      )}
 
       {/* Question Selector Tabs */}
       <div className="flex flex-wrap items-center gap-2">
@@ -747,6 +826,139 @@ export const SectionQuiz: React.FC<SectionQuizProps> = ({
           </button>
         </div>
       )}
+
+      {/* =========================================================================
+          PRINT-FRIENDLY LIGHT THEME CONTAINER FOR SECTION 3 PDF EXPORT
+         ========================================================================= */}
+      <div
+        ref={pdf3Ref}
+        style={{ display: 'none' }}
+        className="w-[800px] p-10 bg-white text-slate-900 font-sans space-y-6"
+      >
+        <div className="border-b-2 border-slate-900 pb-3 flex justify-between items-end">
+          <div>
+            <span className="text-xs font-bold text-teal-700 tracking-wider uppercase">
+              Cambridge IGCSE Mathematics 0580 · Extended Curriculum
+            </span>
+            <h1 className="text-2xl font-bold text-slate-900 font-heading">
+              Section 3: Final Examination Paper & Mark Scheme
+            </h1>
+          </div>
+          <div className="text-right text-xs text-slate-600">
+            <div><strong>Student:</strong> {studentName || 'Student'}</div>
+            <div><strong>Date:</strong> {new Date().toLocaleDateString()}</div>
+            <div><strong>Score:</strong> <span className="font-bold text-amber-700 text-sm">{score} / 5</span> ({Math.round(score * 20)}%)</div>
+          </div>
+        </div>
+
+        {/* Exam Score Summary Box */}
+        <div className="p-4 rounded-lg bg-slate-50 border border-slate-200 flex justify-between items-center text-xs">
+          <div>
+            <div className="font-bold text-slate-900 text-sm">Official Cambridge Assessment Result</div>
+            <div className="text-slate-600 mt-0.5">
+              Extended Mathematics Syllabus 0580: Topics E2.4 & E2.5 (Quadratic Functions & Graphs)
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="px-3 py-1 rounded bg-teal-100 text-teal-900 font-bold font-mono text-sm">
+              {score === 5 ? 'Grade A* (Distinction)' : score === 4 ? 'Grade A (Merit)' : score === 3 ? 'Grade B (Pass)' : 'Core Competency'}
+            </span>
+          </div>
+        </div>
+
+        {/* 5 Questions Breakdown */}
+        <div className="space-y-3 text-xs">
+          {/* Question 1 */}
+          <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-1.5">
+            <div className="flex justify-between items-center font-bold text-slate-900">
+              <span>Question 1 (1 Mark) — Table of Values & y-Intercept</span>
+              <span className={quizCorrect[1] ? 'text-emerald-700 font-mono' : 'text-slate-500 font-mono'}>
+                {quizCorrect[1] ? '[1 / 1 Mark] ✓ Correct' : '[0 / 1 Mark]'}
+              </span>
+            </div>
+            <div className="text-slate-700">
+              For <MathView math="y = x^2 - 4x + 3" />: table of values for <MathView math="x \in [0, 4]" /> and <MathView math="y" />-intercept.
+            </div>
+            <div className="text-slate-600 text-[11px] bg-slate-50 p-2 rounded space-y-1">
+              <div><strong>Student Answer:</strong> {quizAnswers[1] || 'Completed in interactive table'}</div>
+              <div><strong>Model Solution:</strong> Table values: <MathView math="x=0 \to 3, x=1 \to 0, x=2 \to -1, x=3 \to 0, x=4 \to 3" />. The <MathView math="y" />-intercept is <MathView math="(0, 3)" /> (where <MathView math="x=0" />).</div>
+            </div>
+          </div>
+
+          {/* Question 2 */}
+          <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-1.5">
+            <div className="flex justify-between items-center font-bold text-slate-900">
+              <span>Question 2 (1 Mark) — Inverted Parabola Features</span>
+              <span className={quizCorrect[2] ? 'text-emerald-700 font-mono' : 'text-slate-500 font-mono'}>
+                {quizCorrect[2] ? '[1 / 1 Mark] ✓ Correct' : '[0 / 1 Mark]'}
+              </span>
+            </div>
+            <div className="text-slate-700">
+              For <MathView math="y = -x^2 + 4" />: roots, maximum turning point, and axis of symmetry.
+            </div>
+            <div className="text-slate-600 text-[11px] bg-slate-50 p-2 rounded space-y-1">
+              <div><strong>Student Answer:</strong> {quizAnswers[2] || `Roots: ${q2Roots}, TP: ${q2TP}, Sym: ${q2Sym}`}</div>
+              <div><strong>Model Solution:</strong> Roots: <MathView math="x = -2, 2" /> (where <MathView math="y=0" />). Maximum vertex: <MathView math="(0, 4)" />. Line of symmetry: <MathView math="x = 0" /> (the <MathView math="y" />-axis).</div>
+            </div>
+          </div>
+
+          {/* Question 3 */}
+          <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-1.5">
+            <div className="flex justify-between items-center font-bold text-slate-900">
+              <span>Question 3 (1 Mark) — Algebraic Concavity & Intercept</span>
+              <span className={quizCorrect[3] ? 'text-emerald-700 font-mono' : 'text-slate-500 font-mono'}>
+                {quizCorrect[3] ? '[1 / 1 Mark] ✓ Correct' : '[0 / 1 Mark]'}
+              </span>
+            </div>
+            <div className="text-slate-700">
+              Without drawing, deduce whether <MathView math="y = -3x^2 + x + 5" /> has a minimum or maximum, and state its <MathView math="y" />-intercept.
+            </div>
+            <div className="text-slate-600 text-[11px] bg-slate-50 p-2 rounded space-y-1">
+              <div><strong>Student Answer:</strong> {quizAnswers[3] || `Type: ${q3Type}, y-int: ${q3YInt}`}</div>
+              <div><strong>Model Solution:</strong> Since <MathView math="a = -3 < 0" />, the parabola is concave down (frown shape), giving a <strong>maximum</strong> turning point. The <MathView math="y" />-intercept is given by constant <MathView math="c = 5" /> at <MathView math="(0, 5)" />.</div>
+            </div>
+          </div>
+
+          {/* Question 4 */}
+          <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-1.5">
+            <div className="flex justify-between items-center font-bold text-slate-900">
+              <span>Question 4 (1 Mark) — Graphical Equation Solving (= 0)</span>
+              <span className={quizCorrect[4] ? 'text-emerald-700 font-mono' : 'text-slate-500 font-mono'}>
+                {quizCorrect[4] ? '[1 / 1 Mark] ✓ Correct' : '[0 / 1 Mark]'}
+              </span>
+            </div>
+            <div className="text-slate-700">
+              Use the graph of <MathView math="y = x^2 - 4x + 3" /> to solve <MathView math="x^2 - 4x + 3 = 0" />.
+            </div>
+            <div className="text-slate-600 text-[11px] bg-slate-50 p-2 rounded space-y-1">
+              <div><strong>Student Answer:</strong> {quizAnswers[4] || q4Ans}</div>
+              <div><strong>Model Solution:</strong> Set <MathView math="y = 0" /> (the <MathView math="x" />-axis). The curve crosses the <MathView math="x" />-axis at <MathView math="x = 1" /> and <MathView math="x = 3" />.</div>
+            </div>
+          </div>
+
+          {/* Question 5 */}
+          <div className="p-3 rounded-lg border border-slate-200 bg-white space-y-1.5">
+            <div className="flex justify-between items-center font-bold text-slate-900">
+              <span>Question 5 (1 Mark) — Horizontal Line Intersection (= 3)</span>
+              <span className={quizCorrect[5] ? 'text-emerald-700 font-mono' : 'text-slate-500 font-mono'}>
+                {quizCorrect[5] ? '[1 / 1 Mark] ✓ Correct' : '[0 / 1 Mark]'}
+              </span>
+            </div>
+            <div className="text-slate-700">
+              Use the graph of <MathView math="y = x^2 - 4x + 3" /> to solve <MathView math="x^2 - 4x + 3 = 3" />.
+            </div>
+            <div className="text-slate-600 text-[11px] bg-slate-50 p-2 rounded space-y-1">
+              <div><strong>Student Answer:</strong> {quizAnswers[5] || q5Ans}</div>
+              <div><strong>Model Solution:</strong> Draw the horizontal line <MathView math="y = 3" />. It meets the parabola at <MathView math="(0, 3)" /> and <MathView math="(4, 3)" />. Reading the <MathView math="x" />-coordinates yields <MathView math="x = 0" /> or <MathView math="x = 4" />.</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-slate-300 flex justify-between text-xs text-slate-500">
+          <span>Cambridge IGCSE Examination Assessment Paper</span>
+          <span>Verified & Recorded Portfolio</span>
+        </div>
+      </div>
     </div>
   );
 };

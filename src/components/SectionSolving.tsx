@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { MathView } from './MathView';
 import { ParabolaGraph, LineSpec, Point } from './ParabolaGraph';
 import { soundManager } from '../utils/soundEffects';
+import { exportElementToPdf } from '../utils/pdfExport';
+import { Section2State } from '../types';
 import {
   HelpCircle,
   CheckCircle2,
@@ -11,10 +13,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Info
+  Info,
+  Download,
+  FileCheck
 } from 'lucide-react';
 
 interface SectionSolvingProps {
+  state: Section2State;
+  onChange: (updater: (prev: Section2State) => Section2State) => void;
+  studentName: string;
   onCompleteSection: () => void;
 }
 
@@ -34,10 +41,32 @@ interface ExampleData {
   tryItFeedback: string;
 }
 
-export const SectionSolving: React.FC<SectionSolvingProps> = ({ onCompleteSection }) => {
-  const [activeEx, setActiveEx] = useState(1);
-  const [tryItInputs, setTryItInputs] = useState<{ [id: number]: string }>({});
-  const [tryItResults, setTryItResults] = useState<{ [id: number]: boolean | null }>({});
+export const SectionSolving: React.FC<SectionSolvingProps> = ({
+  state,
+  onChange,
+  studentName,
+  onCompleteSection,
+}) => {
+  const activeEx = state.activeEx;
+  const setActiveEx = (ex: number) => onChange((prev) => ({ ...prev, activeEx: ex }));
+  const tryItInputs = state.tryItInputs;
+  const tryItResults = state.tryItResults;
+
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const pdf2Ref = useRef<HTMLDivElement>(null);
+
+  const handleDownloadSection2PDF = async () => {
+    if (!pdf2Ref.current) return;
+    setIsExporting(true);
+    const safeName = (studentName || 'Student').replace(/[^a-zA-Z0-9]/g, '_');
+    const success = await exportElementToPdf(pdf2Ref.current, `IGCSE_Maths_0580_Section2_Solving_${safeName}.pdf`);
+    setIsExporting(false);
+    if (success) {
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 4000);
+    }
+  };
 
   const examples: ExampleData[] = [
     {
@@ -224,7 +253,10 @@ export const SectionSolving: React.FC<SectionSolvingProps> = ({ onCompleteSectio
     const isCorrect = current.tryItAnswers.some((ans) =>
       input.replace(/\s+/g, '').includes(ans.toLowerCase().replace(/\s+/g, ''))
     );
-    setTryItResults((prev) => ({ ...prev, [current.id]: isCorrect }));
+    onChange((prev) => ({
+      ...prev,
+      tryItResults: { ...prev.tryItResults, [current.id]: isCorrect },
+    }));
     if (isCorrect) {
       soundManager.playCorrectSound("Spot on! That's the correct graphical solution.");
     } else {
@@ -232,22 +264,46 @@ export const SectionSolving: React.FC<SectionSolvingProps> = ({ onCompleteSectio
     }
   };
 
+  const handleInputChange = (val: string) => {
+    onChange((prev) => ({
+      ...prev,
+      tryItInputs: { ...prev.tryItInputs, [current.id]: val },
+    }));
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Header Card */}
-      <div className="rounded-3xl bg-slate-900/80 border border-slate-800 p-6 md:p-8 backdrop-blur-xl space-y-4">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/50 text-cyan-300 text-xs font-semibold uppercase tracking-wider">
-          <Bookmark className="w-3.5 h-3.5 text-cyan-400" />
-          IGCSE Core Principle · Graphical Solutions
+      <div className="rounded-3xl bg-slate-900/80 border border-slate-800 p-6 md:p-8 backdrop-blur-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-800/50 text-cyan-300 text-xs font-semibold uppercase tracking-wider">
+            <Bookmark className="w-3.5 h-3.5 text-cyan-400" />
+            IGCSE Core Principle · Graphical Solutions
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-white font-heading">
+            Solving Quadratic Equations Graphically
+          </h2>
+          <p className="text-sm md:text-base text-slate-300 max-w-3xl leading-relaxed">
+            The solutions to any equation <MathView math="ax^2 + bx + c = k" /> are simply the 
+            <strong className="text-cyan-300"> x-coordinates</strong> of the intersection points between the curve 
+            <MathView math="y = ax^2 + bx + c" /> and the line <MathView math="y = k" />!
+          </p>
         </div>
-        <h2 className="text-2xl md:text-3xl font-bold text-white font-heading">
-          Solving Quadratic Equations Graphically
-        </h2>
-        <p className="text-sm md:text-base text-slate-300 max-w-3xl leading-relaxed">
-          The solutions to any equation <MathView math="ax^2 + bx + c = k" /> are simply the 
-          <strong className="text-cyan-300"> x-coordinates</strong> of the intersection points between the curve 
-          <MathView math="y = ax^2 + bx + c" /> and the line <MathView math="y = k" />!
-        </p>
+
+        {/* Section 2 Download Button */}
+        <div className="shrink-0 flex flex-col items-end gap-1.5">
+          <button
+            onClick={handleDownloadSection2PDF}
+            disabled={isExporting}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 text-xs font-semibold shadow-md active:scale-95 transition-all disabled:opacity-50"
+          >
+            <Download className="w-4 h-4 text-cyan-400" />
+            <span>{isExporting ? 'Generating PDF...' : 'Download Section 2 (PDF)'}</span>
+          </button>
+          {exportSuccess && (
+            <span className="text-[11px] text-emerald-400 font-medium">✓ Section 2 PDF Downloaded!</span>
+          )}
+        </div>
       </div>
 
       {/* Main Interactive Stage: Two-Zone Layout */}
@@ -333,7 +389,7 @@ export const SectionSolving: React.FC<SectionSolvingProps> = ({ onCompleteSectio
                   type="text"
                   placeholder="Type your answer..."
                   value={tryItInputs[current.id] || ''}
-                  onChange={(e) => setTryItInputs({ ...tryItInputs, [current.id]: e.target.value })}
+                  onChange={(e) => handleInputChange(e.target.value)}
                   className="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs md:text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
                 />
                 <button
@@ -418,8 +474,17 @@ export const SectionSolving: React.FC<SectionSolvingProps> = ({ onCompleteSectio
             </p>
           </div>
 
-          {/* Continue Button */}
-          <div className="pt-2 flex justify-end">
+          {/* Action Buttons: Download Section 2 & Continue */}
+          <div className="pt-2 flex flex-wrap items-center justify-between gap-4">
+            <button
+              onClick={handleDownloadSection2PDF}
+              disabled={isExporting}
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 font-semibold text-xs transition-all active:scale-95 disabled:opacity-50"
+            >
+              <Download className="w-4 h-4 text-cyan-400" />
+              <span>{isExporting ? 'Generating PDF...' : 'Download Section 2 (PDF)'}</span>
+            </button>
+
             <button
               onClick={onCompleteSection}
               className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold font-heading text-sm shadow-lg shadow-cyan-500/20 active:scale-95 transition-all"
@@ -428,6 +493,78 @@ export const SectionSolving: React.FC<SectionSolvingProps> = ({ onCompleteSectio
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* =========================================================================
+          PRINT-FRIENDLY LIGHT THEME CONTAINER FOR SECTION 2 PDF EXPORT
+         ========================================================================= */}
+      <div
+        ref={pdf2Ref}
+        style={{ display: 'none' }}
+        className="w-[800px] p-10 bg-white text-slate-900 font-sans space-y-6"
+      >
+        <div className="border-b-2 border-slate-900 pb-3 flex justify-between items-end">
+          <div>
+            <span className="text-xs font-bold text-teal-700 tracking-wider uppercase">
+              Cambridge IGCSE Mathematics 0580 · Extended Curriculum
+            </span>
+            <h1 className="text-2xl font-bold text-slate-900 font-heading">
+              Section 2: Solving Quadratic Equations Graphically
+            </h1>
+          </div>
+          <div className="text-right text-xs text-slate-600">
+            <div><strong>Student:</strong> {studentName || 'Student'}</div>
+            <div><strong>Date:</strong> {new Date().toLocaleDateString()}</div>
+          </div>
+        </div>
+
+        <div className="p-3 rounded bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
+          <strong>Fundamental Principle:</strong> To solve any equation of the form <MathView math="ax^2 + bx + c = k" /> using the drawn parabola <MathView math="y = ax^2 + bx + c" />, draw the horizontal line <MathView math="y = k" /> across the grid. The solutions are the <MathView math="x" />-coordinates of the points where the line meets the curve.
+        </div>
+
+        <div className="space-y-4">
+          <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-1">
+            Worked Examples & Student Practice
+          </h2>
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            {examples.map((ex) => (
+              <div key={ex.id} className="p-3 rounded-lg border border-slate-200 bg-white space-y-1.5">
+                <div className="flex justify-between items-center font-bold text-slate-900">
+                  <span>{ex.title}</span>
+                  <span className={tryItResults[ex.id] ? 'text-emerald-700 font-mono text-[11px]' : 'text-slate-500 font-mono text-[11px]'}>
+                    {tryItResults[ex.id] ? '✓ Solved' : 'Practiced'}
+                  </span>
+                </div>
+                <div className="font-mono text-cyan-800 text-[11px] bg-slate-50 p-1 rounded">
+                  Solve: {ex.equation}
+                </div>
+                <div className="text-slate-600 text-[11px]">
+                  <strong>Method:</strong> {ex.steps[0]}
+                </div>
+                <div className="text-slate-900 font-semibold text-[11px]">
+                  <strong>Solution:</strong> <MathView math={ex.explanationLaTeX} />
+                </div>
+                {tryItInputs[ex.id] && (
+                  <div className="text-[10px] text-slate-500 border-t border-slate-100 pt-1">
+                    Student answer: <em>"{tryItInputs[ex.id]}"</em> {tryItResults[ex.id] ? '✓' : ''}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 space-y-1">
+          <strong>IGCSE Exam Rules for Number of Real Solutions:</strong>
+          <div>• Line cuts curve twice: 2 distinct real solutions</div>
+          <div>• Line touches curve at vertex (tangent): 1 repeated real solution</div>
+          <div>• Line does not meet curve: 0 real solutions (no real roots)</div>
+        </div>
+
+        <div className="pt-4 border-t border-slate-300 flex justify-between text-xs text-slate-500">
+          <span>Cambridge IGCSE Mathematics 0580 Verification</span>
+          <span>Status: Section 2 Mastered</span>
         </div>
       </div>
     </div>

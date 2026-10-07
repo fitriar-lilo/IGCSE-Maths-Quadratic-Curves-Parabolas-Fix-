@@ -1,29 +1,120 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SectionWelcome } from './components/SectionWelcome';
 import { SectionDiscovery } from './components/SectionDiscovery';
 import { SectionSolving } from './components/SectionSolving';
 import { SectionQuiz } from './components/SectionQuiz';
 import { SectionFinish } from './components/SectionFinish';
-import { MathView } from './components/MathView';
 import { soundManager } from './utils/soundEffects';
+import {
+  LessonState,
+  Section1State,
+  Section2State,
+  Section3State,
+  getDefaultLessonState,
+  getDefaultSection1State,
+  getDefaultSection2State,
+  getDefaultSection3State,
+} from './types';
 import {
   Compass,
   Sparkles,
   BookOpen,
-  CheckCircle2,
   Trophy,
+  GraduationCap,
   ArrowRight,
   User,
-  GraduationCap,
   Volume2,
-  VolumeX
+  VolumeX,
+  Save,
+  Download,
+  RotateCcw,
+  CheckCircle2,
+  ChevronDown
 } from 'lucide-react';
 
+const STORAGE_KEY = 'igcse_0580_parabola_lesson_state_v2';
+
+const loadSavedState = (): LessonState => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return {
+          ...getDefaultLessonState(),
+          ...parsed,
+          section1: { ...getDefaultSection1State(), ...(parsed.section1 || {}) },
+          section2: { ...getDefaultSection2State(), ...(parsed.section2 || {}) },
+          section3: { ...getDefaultSection3State(), ...(parsed.section3 || {}) },
+        };
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load saved state:', err);
+  }
+  return getDefaultLessonState();
+};
+
 export default function App() {
-  const [studentName, setStudentName] = useState('');
-  const [currentSection, setCurrentSection] = useState<number>(0);
+  const [lessonState, setLessonState] = useState<LessonState>(() => loadSavedState());
   const [soundOn, setSoundOn] = useState<boolean>(true);
   const [voiceOn, setVoiceOn] = useState<boolean>(true);
+  const [saveToast, setSaveToast] = useState<string | null>(null);
+  const [downloadDropdown, setDownloadDropdown] = useState<boolean>(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync to localStorage whenever lessonState changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lessonState));
+    } catch (err) {
+      console.error('Failed to persist session state:', err);
+    }
+  }, [lessonState]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDownloadDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const showNotification = (msg: string) => {
+    setSaveToast(msg);
+    setTimeout(() => {
+      setSaveToast((current) => (current === msg ? null : current));
+    }, 3500);
+  };
+
+  const handleManualSave = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(lessonState));
+      if (soundOn) soundManager.playPointSound(5);
+      showNotification('✓ All section work successfully saved to local browser storage!');
+    } catch (err) {
+      console.error('Save failed:', err);
+    }
+  };
+
+  const handleReset = () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to reset your workbook progress? All completed tables and answers will be cleared.'
+    );
+    if (confirmed) {
+      const fresh = getDefaultLessonState();
+      setLessonState(fresh);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.error(e);
+      }
+      showNotification('Workbook reset to initial state.');
+    }
+  };
 
   const toggleSound = () => {
     const next = !soundOn;
@@ -36,22 +127,45 @@ export default function App() {
     const next = !voiceOn;
     soundManager.setVoiceEnabled(next);
     setVoiceOn(next);
-    if (next) soundManager.speak("Teacher voice effect enabled.");
+    if (next) soundManager.speak('Teacher voice effect enabled.');
   };
-  
-  // Student written explanations for Section 1.5
-  const [explanations, setExplanations] = useState({
-    sketching: '',
-    roots: '',
-    turningPoint: '',
-    symmetry: '',
-  });
 
-  // Quiz state
-  const [quizAnswers, setQuizAnswers] = useState<{ [key: number]: string }>({});
-  const [quizChecked, setQuizChecked] = useState<{ [key: number]: boolean }>({});
-  const [quizCorrect, setQuizCorrect] = useState<{ [key: number]: boolean }>({});
-  const [score, setScore] = useState<number>(0);
+  const currentSection = lessonState.currentSection;
+  const setCurrentSection = (sec: number) => {
+    setLessonState((prev) => ({
+      ...prev,
+      currentSection: sec,
+      lastSavedAt: new Date().toISOString(),
+    }));
+  };
+
+  const setStudentName = (name: string) => {
+    setLessonState((prev) => ({ ...prev, studentName: name }));
+  };
+
+  const updateSection1 = (updater: (prev: Section1State) => Section1State) => {
+    setLessonState((prev) => ({
+      ...prev,
+      section1: updater(prev.section1),
+      lastSavedAt: new Date().toISOString(),
+    }));
+  };
+
+  const updateSection2 = (updater: (prev: Section2State) => Section2State) => {
+    setLessonState((prev) => ({
+      ...prev,
+      section2: updater(prev.section2),
+      lastSavedAt: new Date().toISOString(),
+    }));
+  };
+
+  const updateSection3 = (updater: (prev: Section3State) => Section3State) => {
+    setLessonState((prev) => ({
+      ...prev,
+      section3: updater(prev.section3),
+      lastSavedAt: new Date().toISOString(),
+    }));
+  };
 
   const sections = [
     { id: 0, title: 'Welcome', icon: Compass },
@@ -61,27 +175,25 @@ export default function App() {
     { id: 4, title: '4. Certificate & PDF', icon: GraduationCap },
   ];
 
-  // Calculate progress percentage
+  // Calculate overall progress percentage
   const calculateProgress = () => {
     if (currentSection === 0) return 5;
-    if (currentSection === 1) return 30;
-    if (currentSection === 2) return 60;
+    if (currentSection === 1) {
+      let p = 20;
+      if (lessonState.section1.isCurve1Connected) p += 5;
+      if (lessonState.section1.isCurve2Connected) p += 5;
+      if (lessonState.section1.isCurve3Connected) p += 5;
+      return p;
+    }
+    if (currentSection === 2) {
+      const solved = Object.keys(lessonState.section2.tryItResults).length;
+      return 40 + Math.min(solved * 3, 20);
+    }
     if (currentSection === 3) {
-      const answeredCount = Object.keys(quizChecked).length;
-      return 60 + answeredCount * 6; // 60% to 90%
+      const answeredCount = Object.keys(lessonState.section3.quizChecked).length;
+      return 65 + answeredCount * 6; // up to 95%
     }
     return 100;
-  };
-
-  const handleUpdateQuiz = (qId: number, answer: string, isCorrect: boolean) => {
-    setQuizAnswers((prev) => ({ ...prev, [qId]: answer }));
-    setQuizChecked((prev) => ({ ...prev, [qId]: true }));
-    setQuizCorrect((prev) => {
-      const updated = { ...prev, [qId]: isCorrect };
-      const newScore = Object.values(updated).filter(Boolean).length;
-      setScore(newScore);
-      return updated;
-    });
   };
 
   return (
@@ -100,11 +212,11 @@ export default function App() {
               </div>
               <div className="text-xs text-slate-400 flex items-center gap-2">
                 <span>Cambridge Extended Maths</span>
-                {studentName && (
+                {lessonState.studentName && (
                   <>
                     <span>·</span>
                     <span className="text-cyan-300 font-medium flex items-center gap-1">
-                      <User className="w-3 h-3 inline" /> {studentName}
+                      <User className="w-3 h-3 inline" /> {lessonState.studentName}
                     </span>
                   </>
                 )}
@@ -113,7 +225,7 @@ export default function App() {
           </div>
 
           {/* Nav steps */}
-          <nav className="hidden md:flex items-center gap-1.5 p-1 rounded-xl bg-slate-900/80 border border-slate-800">
+          <nav className="hidden lg:flex items-center gap-1.5 p-1 rounded-xl bg-slate-900/80 border border-slate-800">
             {sections.map((sec) => {
               const Icon = sec.icon;
               const isActive = currentSection === sec.id;
@@ -122,7 +234,7 @@ export default function App() {
                 <button
                   key={sec.id}
                   onClick={() => setCurrentSection(sec.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
                       : isPast
@@ -137,38 +249,128 @@ export default function App() {
             })}
           </nav>
 
-          {/* Quick Score, Sound Toggles & Progress Badge */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Action Tools: Save, Download Dropdown, Audio & Progress */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Auto-save status / Save Button */}
+            <button
+              onClick={handleManualSave}
+              title="Click to manually save workbook progress to browser storage"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 hover:bg-slate-800 text-emerald-400 transition-all cursor-pointer shadow-sm"
+            >
+              <Save className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline text-[11px]">Save Work</span>
+            </button>
+
+            {/* Download Sections Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setDownloadDropdown(!downloadDropdown)}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 bg-gradient-to-r from-teal-500/20 to-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/30 text-cyan-300 transition-all cursor-pointer shadow-sm"
+                title="Download any section as PDF"
+              >
+                <Download className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden md:inline text-[11px]">Download PDF</span>
+                <ChevronDown className="w-3 h-3 text-cyan-400" />
+              </button>
+
+              {downloadDropdown && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-slate-900 border border-slate-700/80 shadow-2xl p-2 z-50 text-xs space-y-1 animate-in fade-in slide-in-from-top-2">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                    Export Section as PDF
+                  </div>
+                  <button
+                    onClick={() => {
+                      setCurrentSection(0);
+                      setDownloadDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 hover:text-cyan-300 flex items-center justify-between transition-all"
+                  >
+                    <span>Section 0: Syllabus & Formulae</span>
+                    <Download className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentSection(1);
+                      setDownloadDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 hover:text-cyan-300 flex items-center justify-between transition-all"
+                  >
+                    <span>Section 1: Discovery & 3 Curves</span>
+                    <Download className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentSection(2);
+                      setDownloadDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 hover:text-cyan-300 flex items-center justify-between transition-all"
+                  >
+                    <span>Section 2: Graphical Solving</span>
+                    <Download className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentSection(3);
+                      setDownloadDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-800 text-slate-200 hover:text-cyan-300 flex items-center justify-between transition-all"
+                  >
+                    <span>Section 3: Exam Paper & Results</span>
+                    <Download className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentSection(4);
+                      setDownloadDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg bg-cyan-950/40 border border-cyan-800/40 text-cyan-200 hover:bg-cyan-900/50 flex items-center justify-between transition-all font-semibold"
+                  >
+                    <span>Complete Lesson Portfolio & Cert</span>
+                    <GraduationCap className="w-3.5 h-3.5 text-cyan-400" />
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Audio SFX Toggle */}
             <button
               onClick={toggleSound}
               title={soundOn ? 'Sound Effects Enabled (click to mute)' : 'Sound Effects Muted (click to enable)'}
-              className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 soundOn
                   ? 'bg-slate-900 border border-slate-700 text-cyan-300 shadow-sm'
                   : 'bg-slate-950 border border-slate-800 text-slate-500'
               }`}
             >
               {soundOn ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4 text-slate-500" />}
-              <span className="hidden xl:inline text-[11px]">{soundOn ? 'SFX On' : 'Muted'}</span>
+              <span className="hidden xl:inline text-[11px]">{soundOn ? 'SFX' : 'Muted'}</span>
             </button>
 
-            {/* Voice Feedback Toggle */}
+            {/* Teacher Voice Toggle */}
             <button
               onClick={toggleVoice}
               title={voiceOn ? 'Teacher Voice Enabled (click to mute)' : 'Teacher Voice Muted (click to enable)'}
-              className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              className={`p-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
                 voiceOn
                   ? 'bg-slate-900 border border-slate-700 text-amber-300 shadow-sm'
                   : 'bg-slate-950 border border-slate-800 text-slate-500'
               }`}
             >
               <span className="text-sm">🗣️</span>
-              <span className="hidden xl:inline text-[11px]">{voiceOn ? 'Voice On' : 'Voice Off'}</span>
+              <span className="hidden xl:inline text-[11px]">{voiceOn ? 'Voice' : 'Off'}</span>
+            </button>
+
+            {/* Reset button */}
+            <button
+              onClick={handleReset}
+              title="Reset progress and start fresh"
+              className="p-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 border border-slate-800 transition-all cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
 
             <div className="text-right hidden sm:block pl-1">
-              <span className="text-[10px] text-slate-400 uppercase font-semibold block">Lesson Progress</span>
+              <span className="text-[10px] text-slate-400 uppercase font-semibold block">Progress</span>
               <span className="text-xs font-mono font-bold text-cyan-300">{calculateProgress()}%</span>
             </div>
           </div>
@@ -183,6 +385,14 @@ export default function App() {
         </div>
       </header>
 
+      {/* Floating Save Notification Toast */}
+      {saveToast && (
+        <div className="fixed top-16 right-4 z-50 p-3.5 rounded-2xl bg-slate-900/95 border border-emerald-500/60 shadow-2xl backdrop-blur-xl text-xs text-emerald-300 flex items-center gap-2.5 animate-in slide-in-from-top-4 fade-in duration-300">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{saveToast}</span>
+        </div>
+      )}
+
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 md:py-10">
         {/* Mascot Encouragement Header */}
@@ -196,8 +406,8 @@ export default function App() {
                 Archie the Angle Owl · Your IGCSE Guide
               </span>
               <p className="text-xs text-slate-300">
-                {currentSection === 0 && 'Welcome! Enter your name below to unlock your interactive quadratic workbook.'}
-                {currentSection === 1 && 'Remember: Join points with a smooth curved line. Never use a straight ruler!'}
+                {currentSection === 0 && 'Welcome! All your work in every section is automatically saved so you never lose progress.'}
+                {currentSection === 1 && 'Remember: Join points with a smooth curved line. You can download Section 1 at any time!'}
                 {currentSection === 2 && 'To solve an equation graphically, draw the horizontal line and read straight down to the x-axis.'}
                 {currentSection === 3 && 'Take your time on each mark. Read non-integer graph values to 1 decimal place.'}
                 {currentSection === 4 && 'Outstanding work! Download your certified PDF report below to keep your proof of mastery.'}
@@ -209,7 +419,7 @@ export default function App() {
           {currentSection < 4 && (
             <button
               onClick={() => setCurrentSection(currentSection + 1)}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-medium shrink-0 transition-all"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 text-xs font-medium shrink-0 transition-all cursor-pointer"
             >
               <span>Next Section</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -217,45 +427,49 @@ export default function App() {
           )}
         </div>
 
-        {/* Active Section Content */}
+        {/* Active Section Content with Persistent Lifted State */}
         {currentSection === 0 && (
           <SectionWelcome
-            studentName={studentName}
-            onSetName={(name) => setStudentName(name)}
+            studentName={lessonState.studentName}
+            onSetName={setStudentName}
             onStart={() => setCurrentSection(1)}
           />
         )}
 
         {currentSection === 1 && (
           <SectionDiscovery
-            explanations={explanations}
-            onUpdateExplanations={(newExp) => setExplanations(newExp)}
+            state={lessonState.section1}
+            onChange={updateSection1}
+            studentName={lessonState.studentName}
             onCompleteSection={() => setCurrentSection(2)}
           />
         )}
 
         {currentSection === 2 && (
-          <SectionSolving onCompleteSection={() => setCurrentSection(3)} />
+          <SectionSolving
+            state={lessonState.section2}
+            onChange={updateSection2}
+            studentName={lessonState.studentName}
+            onCompleteSection={() => setCurrentSection(3)}
+          />
         )}
 
         {currentSection === 3 && (
           <SectionQuiz
-            quizAnswers={quizAnswers}
-            quizChecked={quizChecked}
-            quizCorrect={quizCorrect}
-            score={score}
-            onUpdateQuestion={handleUpdateQuiz}
+            state={lessonState.section3}
+            onChange={updateSection3}
+            studentName={lessonState.studentName}
             onCompleteQuiz={() => setCurrentSection(4)}
           />
         )}
 
         {currentSection === 4 && (
           <SectionFinish
-            studentName={studentName}
-            score={score}
-            explanations={explanations}
-            quizAnswers={quizAnswers}
-            quizCorrect={quizCorrect}
+            studentName={lessonState.studentName}
+            score={lessonState.section3.score}
+            explanations={lessonState.section1.explanations}
+            quizAnswers={lessonState.section3.quizAnswers}
+            quizCorrect={lessonState.section3.quizCorrect}
             onRestart={() => setCurrentSection(0)}
           />
         )}
